@@ -1,0 +1,69 @@
+import moment from "moment";
+import Attendance from "../db/models/Attendance.mjs";
+import { DATE_FORMAT } from "../constants/date_constants.mjs";
+import 'moment-timezone';
+
+export const updateAttendance = async (
+  fromDate,
+  toDate,
+  employee,
+  leaveType
+) => {
+  try {
+    const dateArray = [];
+    const currentDate = moment(fromDate, DATE_FORMAT);
+    const lastDate = moment(toDate, DATE_FORMAT);
+
+    while (currentDate <= lastDate) {
+      dateArray.push(currentDate.toDate());
+      if (
+        moment(currentDate)
+          .endOf("year")
+          .startOf("day")
+          .isSame(currentDate, "day")
+      ) {
+        currentDate.add(1, "year");
+        currentDate.month(0);
+        currentDate.date(1);
+      } else if (
+        moment(currentDate)
+          .endOf("month")
+          .startOf("day")
+          .isSame(currentDate, "day")
+      ) {
+        currentDate.add(1, "month");
+        currentDate.date(1);
+      } else {
+        currentDate.add(1, "day");
+      }
+    }
+    const attendances = [];
+    for (const date of dateArray) {
+      const attendanceOnDate = await Attendance.findOne({
+        date,
+        employee: employee._id,
+      });
+      if (!attendanceOnDate) {
+        const perDaySalary = employee.salary.base / moment(date).daysInMonth();
+        const daySalary = leaveType === "Medical Leave" ? perDaySalary : 0;
+        const deducted = leaveType === "Medical Leave" ? 0 : perDaySalary;
+        employee.salary.finalAmount = employee.salary.finalAmount - deducted;
+        employee.salary.deductions = employee.salary.deductions + deducted;
+        attendances.push({
+          employee: employee._id,
+          date,
+          status: leaveType,
+          perDaySalary,
+          daySalary,
+          deducted,
+          entryExitTime: [],
+        });
+      }
+    }
+    await Attendance.insertMany(attendances);
+    return true;
+  } catch (error) {
+    console.error(error);
+    return false;
+  }
+};
