@@ -48,8 +48,8 @@ export const createDepartment = [
       }
 
       // Convert open and close times to UTC
-      const open = moment.utc(openTime, "HH:mm:ss").toDate();
-      const close = moment.utc(closeTime, "HH:mm:ss").toDate();
+      const open = moment.utc(openTime, "HH:mm:ss").subtract(5, 'hours').subtract(30, 'minutes').toDate();
+      const close = moment.utc(closeTime, "HH:mm:ss").subtract(5, 'hours').subtract(30, 'minutes').toDate();
 
       // Create new department
       const newDepartment = new Department({
