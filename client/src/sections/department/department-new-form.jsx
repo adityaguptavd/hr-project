@@ -53,8 +53,8 @@ const NewDepartmentForm = ({ refetch, handleCloseMenu, edit, setEdit, setSnackba
     const body = JSON.stringify({
       name,
       description,
-      openTime: dayjs(openTime).format('HH:mm:ss'),
-      closeTime: dayjs(closeTime).format('HH:mm:ss'),
+      openTime: dayjs(openTime).format(),
+      closeTime: dayjs(closeTime).format(),
       pseudoAdmin,
     });
     if (edit) {

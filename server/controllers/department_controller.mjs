@@ -14,22 +14,6 @@ export const createDepartment = [
     .exists()
     .isString()
     .withMessage("Invalid Department Description"),
-  body("openTime").custom((value) => {     
-    if (value) {
-      if (/^([0-1][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9]$/.test(value)) {
-        return true;
-      }
-    }
-    throw new Error("Invalid Open Time");
-  }),
-  body("closeTime").custom((value) => {
-    if (value) {
-      if (/^([0-1][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9]$/.test(value)) {
-        return true;
-      }
-    }
-    throw new Error("Invalid Close Time");
-  }),
   validateErrors,
   fetchCredentials,
   async (req, res) => {
@@ -48,8 +32,8 @@ export const createDepartment = [
       }
 
       // Convert open and close times to UTC
-      const open = moment.utc(openTime, "HH:mm:ss").toDate();
-      const close = moment.utc(closeTime, "HH:mm:ss").toDate();
+      const open = moment(openTime).utc().toDate();
+      const close = moment(closeTime).utc().toDate();
 
       // Create new department
       const newDepartment = new Department({
@@ -80,11 +64,6 @@ export const fetchAllDepartments = [
         }
       }
       let departments = await Department.find({}, "-__v");
-      departments = departments.map(dep => {
-        dep.openTime = moment(dep.openTime);
-        dep.closeTime = moment(dep.closeTime);
-        return dep;
-      });
       return res.status(200).json({ departments });
     } catch (error) {
       console.error(error);
@@ -100,22 +79,6 @@ export const updateDepartment = [
     .exists()
     .isString()
     .withMessage("Invalid Department Description"),
-  body("openTime").custom((value) => {
-    if (value) {
-      if (/^([0-1][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9]$/.test(value)) {
-        return true;
-      }
-    }
-    throw new Error("Invalid Open Time");
-  }),
-  body("closeTime").custom((value) => {
-    if (value) {
-      if (/^([0-1][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9]$/.test(value)) {
-        return true;
-      }
-    }
-    throw new Error("Invalid Close Time");
-  }),
   validateErrors,
   fetchCredentials,
   async (req, res) => {
@@ -134,24 +97,19 @@ export const updateDepartment = [
         return res.status(404).json({ error: "Departmen not found" });
       }
 
-      const [openHour, openMin, openSec] = openTime.split(":");
-      const [closeHour, closeMin, closeSec] = closeTime.split(":");
-
-      const open = new Date();
-      const close = new Date();
-      open.setHours(+openHour);
-      open.setMinutes(+openMin);
-      open.setSeconds(+openSec);
-
-      close.setHours(+closeHour);
-      close.setMinutes(+closeMin);
-      close.setSeconds(+closeSec);
+      // Convert open and close times to UTC
+      if(openTime){
+        const open = moment(openTime).utc().toDate();
+        existingDepartment.open = open;
+      }
+      if(closeTime){
+        const close = moment(closeTime).utc().toDate();
+        existingDepartment.close = close;
+      }
 
       // update the department
       existingDepartment.name = name;
       existingDepartment.description = description;
-      existingDepartment.open = moment(open);
-      existingDepartment.close = moment(close);
       if(pseudoAdmin !== undefined){
         existingDepartment.pseudoAdmin = pseudoAdmin;
       }

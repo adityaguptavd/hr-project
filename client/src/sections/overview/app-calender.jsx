@@ -10,10 +10,11 @@ import { ClickAwayListener } from '@mui/base';
 
 import './app-calender.css';
 import { Calendar, momentLocalizer } from 'react-big-calendar';
-import moment from 'moment';
+import moment from 'moment-timezone';
 import { useSelector } from 'react-redux';
 
 import { fDate } from 'src/utils/format-time';
+import dayjs from 'dayjs';
 import {
   useAddAttendanceMutation,
   useFetchAttendanceQuery,
@@ -81,9 +82,10 @@ const CalendarComponent = ({ id, setSnackbar, refetchUser, setMonthYear, month, 
     }
     if (Object.keys(slotSelected).length !== 0) {
       // it means requested for new event
+      console.log(dayjs(slotSelected.start));
       const body = JSON.stringify({
         status: newStatus,
-        date: new Date(slotSelected.start),
+        date: dayjs(slotSelected.start),
       });
       addAttendanceMutation({ token, body, id });
       setSlotSelected({});
@@ -131,8 +133,8 @@ const CalendarComponent = ({ id, setSnackbar, refetchUser, setMonthYear, month, 
         return {
           id: item._id,
           title: item.status,
-          start: new Date(item.date), // Use the first time or just the date
-          end: new Date(item.date),
+          start: moment(item.date).tz(moment.tz.guess()).toDate(), // Use the first time or just the date
+          end: moment(item.date).tz(moment.tz.guess()).toDate(),
           allDay: item.status === 'Present' || item.status === 'Holiday',
         };
       });

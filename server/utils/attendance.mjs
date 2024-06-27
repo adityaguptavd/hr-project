@@ -1,7 +1,7 @@
 import moment from "moment";
 import Attendance from "../db/models/Attendance.mjs";
 import { DATE_FORMAT } from "../constants/date_constants.mjs";
-import 'moment-timezone';
+import "moment-timezone";
 
 export const updateAttendance = async (
   fromDate,
@@ -58,6 +58,37 @@ export const updateAttendance = async (
           deducted,
           entryExitTime: [],
         });
+      } else {
+        const status = leaveType;
+        const prevStatus = attendanceOnDate.status;
+        const paidStatus = ["Present", "Medical Leave", "Holiday"];
+        // recover the salary
+        employee.salary.finalAmount =
+          employee.salary.finalAmount + attendanceOnDate.deducted;
+        employee.salary.lastUpdated = Date.now();
+        employee.salary.deductions =
+          employee.salary.deductions - attendanceOnDate.deducted;
+        // update salary according to new status
+        if (paidStatus.includes(status) && paidStatus.includes(prevStatus)) {
+          attendanceOnDate.status = status;
+        } else if (paidStatus.includes(status)) {
+          attendanceOnDate.status = status;
+          attendanceOnDate.daySalary = attendanceOnDate.perDaySalary;
+          attendanceOnDate.deducted = 0;
+          attendanceOnDate.entryExitTime =
+            status === "Present" ? attendanceOnDate.entryExitTime : [];
+        } else {
+          employee.salary.finalAmount =
+            employee.salary.finalAmount - attendanceOnDate.perDaySalary;
+          employee.salary.deductions =
+            employee.salary.deductions + attendanceOnDate.perDaySalary;
+
+          attendanceOnDate.status = status;
+          attendanceOnDate.daySalary = 0;
+          attendanceOnDate.deducted = attendanceOnDate.perDaySalary;
+          attendanceOnDate.entryExitTime = [];
+        }
+        await attendanceOnDate.save();
       }
     }
     await Attendance.insertMany(attendances);

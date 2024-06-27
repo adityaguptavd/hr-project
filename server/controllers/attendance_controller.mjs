@@ -88,7 +88,7 @@ export const uploadAttendance = [
           for (const row of rows) {
             try {
               // Find the employee in the database
-              const date = moment(row["Date"], "YYYY-MM-DD");
+              const date = moment(row["Date"], "YYYY-MM-DD").startOf("day").toDate();
               const employee = await Employee.findOne({
                 employeeId: row["Employee ID"],
               })
@@ -109,7 +109,7 @@ export const uploadAttendance = [
                   let deducted;
                   let entryExitTime = [];
                   const oneDaySalary =
-                    employee.salary.base / date.daysInMonth();
+                    employee.salary.base / moment(row["Date"], "YYYY-MM-DD").startOf("day").daysInMonth();
                   if (
                     !row["Times"] ||
                     row["Times"] === 0 ||
@@ -253,7 +253,7 @@ export const fetchAttendance = [
         const startDate = moment(
           `01/${paddedMonth}/${year}`,
           DATE_FORMAT
-        ).toDate();
+        ).startOf("day").toDate();
         const endDate = moment(startDate).endOf("month").toDate();
         attendance = await Attendance.find(
           {
@@ -397,7 +397,30 @@ export const addAttendance = [
         return res.status(403).json({ error: "Access Denied" });
       }
       const { status } = req.body;
-      const date = moment(req.body.date);
+      console.log(req.body.date);
+      let date = moment(req.body.date).startOf("day");
+      if (
+        moment(date)
+          .endOf("year")
+          .startOf("day")
+          .isSame(date, "day")
+      ) {
+        date.add(1, "year");
+        date.month(0);
+        date.date(1);
+      } else if (
+        moment(date)
+          .endOf("month")
+          .startOf("day")
+          .isSame(date, "day")
+      ) {
+        date.add(1, "month");
+        date.date(1);
+      } else {
+        date.add(1, "day");
+      }
+      date = date.toDate();
+      console.log(date);
       const { id } = req.params; // employee id
       if (!id || !isValidObjectId(id)) {
         return res.status(422).json({ error: "Invalid Employee ID" });
@@ -408,20 +431,21 @@ export const addAttendance = [
       }
       let attendance = await Attendance.findOne({
         employee: employee._id,
-        date: moment(date),
+        date,
       });
       if (attendance) {
         return res
           .status(409)
           .json({ error: "Attendance is already uploaded" });
       }
+      const daysInMonth = moment(req.body.date).startOf("day").daysInMonth();
       attendance = new Attendance({
         employee: employee._id,
         status,
-        date: moment(date),
+        date,
         entryExitTime: [],
         daySalary: 0,
-        perDaySalary: employee.salary.base / date.daysInMonth(),
+        perDaySalary: employee.salary.base / daysInMonth,
         deducted: 0,
       });
       const paidStatus = ["Present", "Medical Leave", "Holiday"];

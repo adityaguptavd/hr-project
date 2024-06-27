@@ -1,4 +1,5 @@
 import { format, getTime, formatDistanceToNow } from 'date-fns';
+import moment from 'moment-timezone';
 
 // ----------------------------------------------------------------------
 
@@ -26,9 +27,8 @@ export function fToNow(date) {
     : '';
 }
 
-export function fTime(date){
-  // Convert date to a Date object
-  const dateObj = new Date(date);
-  // Convert and format the date in UTC
-  return format(dateObj, "hh:mmaaaaa'm'");
+export function fTime(date) {
+  const formattedTime = moment(date).tz(moment.tz.guess())
+  .format('h:mm A');
+  return formattedTime;
 }
