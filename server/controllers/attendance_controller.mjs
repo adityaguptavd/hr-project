@@ -88,7 +88,9 @@ export const uploadAttendance = [
           for (const row of rows) {
             try {
               // Find the employee in the database
-              const date = moment(row["Date"], "YYYY-MM-DD").startOf("day").toDate();
+              const date = moment(row["Date"], "YYYY-MM-DD")
+                .startOf("day")
+                .toDate();
               const employee = await Employee.findOne({
                 employeeId: row["Employee ID"],
               })
@@ -109,7 +111,10 @@ export const uploadAttendance = [
                   let deducted;
                   let entryExitTime = [];
                   const oneDaySalary =
-                    employee.salary.base / moment(row["Date"], "YYYY-MM-DD").startOf("day").daysInMonth();
+                    employee.salary.base /
+                    moment(row["Date"], "YYYY-MM-DD")
+                      .startOf("day")
+                      .daysInMonth();
                   if (
                     !row["Times"] ||
                     row["Times"] === 0 ||
@@ -159,12 +164,15 @@ export const uploadAttendance = [
                       entryTime.setSeconds(+entrySec);
 
                       // time when employee exits
-                      const [exitHour, exitMin, exitSec] =
-                        timeOfEntryOrExit[i + 1].split(":");
-                      const exitTime = new Date();
-                      exitTime.setHours(+exitHour);
-                      exitTime.setMinutes(+exitMin);
-                      exitTime.setSeconds(+exitSec);
+                      let exitTime = employee.department.close;
+                      if ((i + 1) < timeOfEntryOrExit.length) {
+                        const [exitHour, exitMin, exitSec] =
+                          timeOfEntryOrExit[i + 1].split(":");
+                        exitTime = new Date();
+                        exitTime.setHours(+exitHour);
+                        exitTime.setMinutes(+exitMin);
+                        exitTime.setSeconds(+exitSec);
+                      }
 
                       // total time when employee was in the office
                       employeesPresentTime +=
@@ -250,10 +258,9 @@ export const fetchAttendance = [
         if (paddedMonth < 10) {
           paddedMonth = `0${paddedMonth}`;
         }
-        const startDate = moment(
-          `01/${paddedMonth}/${year}`,
-          DATE_FORMAT
-        ).startOf("day").toDate();
+        const startDate = moment(`01/${paddedMonth}/${year}`, DATE_FORMAT)
+          .startOf("day")
+          .toDate();
         const endDate = moment(startDate).endOf("month").toDate();
         attendance = await Attendance.find(
           {
@@ -325,7 +332,7 @@ export const switchAttendanceStatus = [
       if (status === "Remove") {
         await Attendance.deleteOne({ _id: id });
         await employee.save();
-      return res.status(200).json({ message: "Attendance Removed!" });
+        return res.status(200).json({ message: "Attendance Removed!" });
       }
       // update salary according to new status
       else if (paidStatus.includes(status) && paidStatus.includes(prevStatus)) {
@@ -397,30 +404,7 @@ export const addAttendance = [
         return res.status(403).json({ error: "Access Denied" });
       }
       const { status } = req.body;
-      console.log(req.body.date);
-      let date = moment(req.body.date).startOf("day");
-      if (
-        moment(date)
-          .endOf("year")
-          .startOf("day")
-          .isSame(date, "day")
-      ) {
-        date.add(1, "year");
-        date.month(0);
-        date.date(1);
-      } else if (
-        moment(date)
-          .endOf("month")
-          .startOf("day")
-          .isSame(date, "day")
-      ) {
-        date.add(1, "month");
-        date.date(1);
-      } else {
-        date.add(1, "day");
-      }
-      date = date.toDate();
-      console.log(date);
+      const date = moment(req.body.date).toDate();
       const { id } = req.params; // employee id
       if (!id || !isValidObjectId(id)) {
         return res.status(422).json({ error: "Invalid Employee ID" });

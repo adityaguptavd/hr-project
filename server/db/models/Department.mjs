@@ -7,6 +7,11 @@ const departmentSchema = new mongoose.Schema({
   open: Date,
   close: Date,
   pseudoAdmin: Boolean,
+  workingDays: {
+    type: Number,
+    enum: [300, 365],
+    default: 365,
+  }
 });
 
 const Department = mongoose.model("department", departmentSchema);

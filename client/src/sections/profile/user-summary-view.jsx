@@ -1,18 +1,27 @@
 /* eslint-disable react/prop-types */
+import { useState } from 'react';
 import { useSelector } from 'react-redux';
 import Card from '@mui/material/Card';
 import Typography from '@mui/material/Typography';
 import Stack from '@mui/material/Stack';
 import Button from '@mui/material/Button';
 import Grid from '@mui/material/Grid';
+import Popover from '@mui/material/Popover';
+import { ClickAwayListener } from '@mui/base';
 import PropTypes from 'prop-types';
-import { useRouter } from 'src/routes/hooks';
 
 import { fDate } from 'src/utils/format-time';
+import SlipGenerator from './slip-generator';
 
-export default function UserSummaryView({ summary, name, id, effectiveSalary }) {
+export default function UserSummaryView({ summary, id, employeeId, name, department }) {
   const user = useSelector((state) => state.user.user);
-  const router = useRouter();
+
+  const [open, setOpen] = useState(false);
+
+  const closePopup = () => {
+    setOpen(null);
+  };
+
   const getLeavesByStatus = () => {
     const leave = {
       Approved: 0,
@@ -49,10 +58,6 @@ export default function UserSummaryView({ summary, name, id, effectiveSalary }) 
   const { Present, Absent, Holiday } = attendance;
   const halfDay = attendance['Half Day'];
   const onLeave = attendance['Medical Leave'] + attendance['Casual Leave'];
-
-  const redirect = () => {
-    router.push(`/attendance/${name}/${id}`);
-  };
 
   return summary ? (
     <Card
@@ -99,6 +104,28 @@ export default function UserSummaryView({ summary, name, id, effectiveSalary }) 
                   : 'No payment yet!'}
               </Typography>
             </Stack>
+            <Button sx={{ marginTop: '30px', fontSize: '17px' }} onClick={(e) => setOpen(e.target)}>
+              View Receipt
+            </Button>
+            {open && (
+              <ClickAwayListener onClickAway={closePopup}>
+                <Popover
+                  open={!!open}
+                  anchorEl={open}
+                  onClose={closePopup}
+                  anchorOrigin={{ vertical: 'top', horizontal: 'left' }}
+                  transformOrigin={{ vertical: 'top', horizontal: 'left' }}
+                  PaperProps={{
+                    sx: {
+                      width: '600px',
+                      padding: '20px'
+                    },
+                  }}
+                >
+                  <SlipGenerator id={id} name={name} employeeId={employeeId} department={department} />
+                </Popover>
+              </ClickAwayListener>
+            )}
           </Grid>
         )}
         <Grid item xs={12} sm={6} md={4}>
@@ -140,19 +167,18 @@ export default function UserSummaryView({ summary, name, id, effectiveSalary }) 
             <Typography variant="h6">Holiday: </Typography>
             <Typography variant="body2">{Holiday} days</Typography>
           </Stack>
-          <Button sx={{ marginTop: '20px' }} onClick={redirect}>
-            View Full Attendance
-          </Button>
         </Grid>
       </Grid>
     </Card>
   ) : (
-    <Typography>Unable to fetch summary!</Typography>
+    <Typography variant="h3">Loading Summary...</Typography>
   );
 }
 
 UserSummaryView.propTypes = {
   summary: PropTypes.any,
+  id: PropTypes.any,
+  employeeId: PropTypes.any,
   name: PropTypes.string,
-  id: PropTypes.string,
+  department: PropTypes.string,
 };

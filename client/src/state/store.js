@@ -12,6 +12,7 @@ import {
   fetchEmployeeByIdApi,
   fetchAllEmployeesApi,
   updateEmployeeApi,
+  fetchEmployeeSummaryByIdApi,
 } from './api/employee';
 import { fetchAttendanceApi, uploadAttendanceApi, switchAttendanceStatusApi, addAttendanceApi } from './api/attendance';
 import {
@@ -27,6 +28,7 @@ const apis = [
   updateAdminApi,
   createEmployeeApi,
   fetchEmployeeByIdApi,
+  fetchEmployeeSummaryByIdApi,
   fetchAllEmployeesApi,
   removeEmployeeApi,
   updateEmployeeApi,
@@ -54,6 +56,7 @@ const store = configureStore({
     [updateAdminApi.reducerPath]: updateAdminApi.reducer,
     [createEmployeeApi.reducerPath]: createEmployeeApi.reducer,
     [fetchEmployeeByIdApi.reducerPath]: fetchEmployeeByIdApi.reducer,
+    [fetchEmployeeSummaryByIdApi.reducerPath]: fetchEmployeeSummaryByIdApi.reducer,
     [fetchAllEmployeesApi.reducerPath]: fetchAllEmployeesApi.reducer,
     [updateEmployeeApi.reducerPath]: updateEmployeeApi.reducer,
     [removeEmployeeApi.reducerPath]: removeEmployeeApi.reducer,

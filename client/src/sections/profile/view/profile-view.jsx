@@ -35,7 +35,11 @@ import { fDate } from 'src/utils/format-time';
 import CustomSnack from 'src/components/snackbar';
 import { useSelector } from 'react-redux';
 import { useFetchAllDepartmentsQuery } from 'src/state/api/department';
-import { useFetchEmployeeQuery, useUpdateEmployeeMutation } from 'src/state/api/employee';
+import {
+  useFetchEmployeeQuery,
+  useFetchEmployeeSummaryQuery,
+  useUpdateEmployeeMutation,
+} from 'src/state/api/employee';
 import dayjs from 'dayjs';
 
 import { getFileURL, base64ToUrl } from 'src/utils/url';
@@ -50,6 +54,31 @@ export default function ProfileView() {
   const loggedUser = useSelector((state) => state.user.user);
   const { id: userId } = useParams();
 
+  const [monthYear, setMonthYear] = useState({
+    month: new Date().getMonth(),
+    year: new Date().getFullYear(),
+  });
+
+  const {
+    data: summaryData,
+    error: fetchSummaryError,
+    refetch: refetchSummary,
+  } = useFetchEmployeeSummaryQuery({
+    token,
+    id: userId,
+    month: monthYear.month,
+    year: monthYear.year,
+  });
+
+  const {
+    data: employee,
+    error: noEmployee,
+    refetch: refetchEmployee,
+  } = useFetchEmployeeQuery({
+    token,
+    id: userId,
+  });
+
   const [skip, setSkip] = useState(true);
   // fetch department list
   const { data, error } = useFetchAllDepartmentsQuery({ token }, { skip });
@@ -59,21 +88,6 @@ export default function ProfileView() {
     }
   }, [loggedUser]);
 
-  const [monthYear, setMonthYear] = useState({
-    month: new Date().getMonth(),
-    year: new Date().getFullYear(),
-  });
-
-  const {
-    data: employee,
-    error: noEmployee,
-    refetch,
-  } = useFetchEmployeeQuery({
-    token,
-    id: userId,
-    month: monthYear.month,
-    year: monthYear.year,
-  });
   // to send user data to backend
   const [updateEmployeeMutation, { isLoading, data: success, error: failed }] =
     useUpdateEmployeeMutation();
@@ -369,9 +383,9 @@ export default function ProfileView() {
         anchorOrigin: { vertical: 'top', horizontal: 'right' },
       });
       setEditMode((e) => !e);
-      refetch();
+      refetchEmployee();
     }
-  }, [failed, success, router, theme, refetch]);
+  }, [failed, success, router, theme, refetchEmployee]);
 
   // post fetching employee by id
   useEffect(() => {
@@ -391,8 +405,7 @@ export default function ProfileView() {
     }
     if (employee) {
       if (!editMode) {
-        const { user: emp, leaveSummary, attendanceSummary, status } = employee;
-        setSummary({ attendanceSummary, leaveSummary, salary: emp.salary, status });
+        const { user: emp } = employee;
         const { local, pincode, state, city } = emp.address;
         const {
           local: commLocal,
@@ -464,6 +477,30 @@ export default function ProfileView() {
     }
   }, [employee, noEmployee, theme, editMode]);
 
+  // after fetching summary of the user
+  useEffect(() => {
+    if (fetchSummaryError) {
+      let mssg = '';
+      if (fetchSummaryError.status === 'FETCH_ERROR') {
+        mssg = 'Server is not responding!';
+      } else {
+        mssg = 'Unable to fetch user details';
+      }
+      setSnackbar({
+        open: true,
+        mssg,
+        bgColor: theme.palette.error.dark,
+        anchorOrigin: { vertical: 'top', horizontal: 'right' },
+      });
+    }
+    if (summaryData) {
+      if (!editMode) {
+        const { user: emp, leaveSummary, attendanceSummary, status } = summaryData;
+        setSummary({ attendanceSummary, leaveSummary, salary: emp.salary, status });
+      }
+    }
+  }, [summaryData, fetchSummaryError, theme, editMode]);
+
   const renderDept = () => {
     if (loggedUser && loggedUser.role !== 'HR' && !loggedUser.department.pseudoAdmin) {
       return (
@@ -482,584 +519,548 @@ export default function ProfileView() {
     ));
   };
 
-  // useEffect(() => {
-  //   const handleGetEmployeeID = () => {
-  //     // Define the base URL based on the environment
-  //     const url =
-  //       process.env.NODE_ENV === 'production'
-  //         ? 'https://hr-project-wohb.onrender.com'
-  //         : 'http://localhost:5000';
-
-  //     // Fetch the employee data
-  //     fetch(`${url}/api/v1/files/getEmployeeData/${user.employeeId}`, {
-  //       method: 'GET',
-  //     })
-  //       .then((response) => response.json())
-  //       .then((result) => {
-  //         console.log('Success:', result);
-  //         setFileDataTime(result.employee); // Make sure to set the result here
-  //         // setFileDataTime(Array.isArray(result) ? result : []);
-  //       })
-  //       .catch((error) => {
-  //         console.error('Error:', error);
-  //       });
-  //   };
-  //   if (user.employeeId) {
-  //     handleGetEmployeeID();
-  //   }
-  // }, [user.employeeId]); // Ensure the dependency array is correct
-
   return (
-    <>
-      {employee && (
-        <Container>
-          <CustomSnack
-            open={snackbar.open}
-            mssg={snackbar.mssg}
-            bgColor={snackbar.bgColor}
-            closeSnackbar={() => {
-              setSnackbar(initialSnackbar);
-            }}
-            severity="error"
-            anchorOrigin={snackbar.anchorOrigin}
-          />
-          <Stack direction="row" alignItems="center" justifyContent="space-between" mb={5}>
-            <Typography variant="h4">{editMode ? 'Update User' : 'User Profile'}</Typography>
-            {loggedUser && (loggedUser.role === 'HR' || loggedUser.department.pseudoAdmin) && (
-              <Stack direction="row" spacing={2}>
-                <Tooltip title="Email">
-                  <IconButton
-                    disabled={editMode}
-                    component={RouterLink}
-                    href={`mailto:${user.email}`}
-                  >
-                    <EmailIcon />
-                  </IconButton>
-                </Tooltip>
-                <Tooltip title="Whatsapp">
-                  <IconButton
-                    disabled={editMode}
-                    component={RouterLink}
-                    href={`whatsapp://send?phone=+91${user.whatsApp}`}
-                  >
-                    <WhatsAppIcon />
-                  </IconButton>
-                </Tooltip>
-                <Button variant="contained" onClick={() => setEditMode(!editMode)}>
-                  {editMode ? 'Cancel' : 'Edit'}
-                </Button>
-              </Stack>
-            )}
+    <Container>
+      <CustomSnack
+        open={snackbar.open}
+        mssg={snackbar.mssg}
+        bgColor={snackbar.bgColor}
+        closeSnackbar={() => {
+          setSnackbar(initialSnackbar);
+        }}
+        severity="error"
+        anchorOrigin={snackbar.anchorOrigin}
+      />
+      <Stack direction="row" alignItems="center" justifyContent="space-between" mb={5}>
+        <Typography variant="h4">{editMode ? 'Update User' : 'User Profile'}</Typography>
+        {loggedUser && (loggedUser.role === 'HR' || loggedUser.department.pseudoAdmin) && (
+          <Stack direction="row" spacing={2}>
+            <Tooltip title="Email">
+              <IconButton disabled={editMode} component={RouterLink} href={`mailto:${user.email}`}>
+                <EmailIcon />
+              </IconButton>
+            </Tooltip>
+            <Tooltip title="Whatsapp">
+              <IconButton
+                disabled={editMode}
+                component={RouterLink}
+                href={`whatsapp://send?phone=+91${user.whatsApp}`}
+              >
+                <WhatsAppIcon />
+              </IconButton>
+            </Tooltip>
+            <Button variant="contained" onClick={() => setEditMode(!editMode)}>
+              {editMode ? 'Cancel' : 'Edit'}
+            </Button>
           </Stack>
-          <Stack
-            direction={{ xs: 'column', md: 'row' }}
-            gap={1}
-            justifyContent="space-between"
-            alignItems="flex-start"
-            width="100%"
-          >
-            <Stack
-              direction="column"
-              gap="20px"
-              width="250px"
-              alignItems="flex-start"
-              sx={{ alignSelf: 'center' }}
-            >
-              <Avatar sx={{ height: '200px', width: '200px' }} src={profilePic && profilePic.url} />
-              {loggedUser &&
-                (loggedUser.role === 'HR' || loggedUser.department.pseudoAdmin) &&
-                uploadImageField}
-            </Stack>
-            <UserSummaryView
-              summary={summary}
+        )}
+      </Stack>
+      <Stack
+        direction={{ xs: 'column', md: 'row' }}
+        gap={1}
+        justifyContent="space-between"
+        alignItems="flex-start"
+        width="100%"
+      >
+        <Stack
+          direction="column"
+          gap="20px"
+          width="250px"
+          alignItems="flex-start"
+          sx={{ alignSelf: 'center' }}
+        >
+          <Avatar sx={{ height: '200px', width: '200px' }} src={profilePic && profilePic.url} />
+          {loggedUser &&
+            (loggedUser.role === 'HR' || loggedUser.department.pseudoAdmin) &&
+            uploadImageField}
+        </Stack>
+        <UserSummaryView
+          summary={summary}
+          id={userId}
+          name={`${user.firstName} ${user.lastName}`}
+          employeeId={user.employeeId}
+          department={user.departmentId.split("^")[1]}
+        />
+      </Stack>
+      <Box>
+        <Grid container spacing={2} alignItems="stretch">
+          <Grid item xs={12}>
+            <AppCalender
               id={userId}
-              name={`${user.firstName} ${user.lastName}`}
+              setSnackbar={setSnackbar}
+              refetchUser={refetchSummary}
+              setMonthYear={setMonthYear}
+              month={monthYear.month}
+              year={monthYear.year}
             />
-          </Stack>
+          </Grid>
+        </Grid>
+      </Box>
+      <Card
+        sx={{
+          padding: '30px',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '50px',
+          marginTop: '50px',
+        }}
+      >
+        <Box>
+          <Typography gutterBottom variant="h5" color={theme.palette.grey[500]}>
+            Personal Information
+          </Typography>
+          <Grid container spacing={2} alignItems="stretch">
+            <Grid item xs={12} sm={6}>
+              <InputLabel id="employeeid">Employee ID</InputLabel>
+              <TextField
+                disabled={!editMode}
+                labelId="employeeid"
+                fullWidth
+                placeholder="Employee ID"
+                value={user.employeeId}
+                onChange={(e) => {
+                  handleChange('employeeId', e.target.value);
+                }}
+              />
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <InputLabel id="firstname">First Name</InputLabel>
+              <TextField
+                disabled={!editMode}
+                labelId="firstname"
+                fullWidth
+                placeholder="First Name"
+                value={user.firstName}
+                onChange={(e) => {
+                  handleChange('firstName', e.target.value);
+                }}
+              />
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <InputLabel id="lastname">Last Name</InputLabel>
+              <TextField
+                disabled={!editMode}
+                labelId="lastname"
+                fullWidth
+                placeholder="Last Name"
+                value={user.lastName}
+                onChange={(e) => {
+                  handleChange('lastName', e.target.value);
+                }}
+              />
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <InputLabel id="gender">Gender</InputLabel>
+              <Select
+                disabled={!editMode}
+                labelId="gender"
+                fullWidth
+                label="Gender"
+                value={user.gender}
+                onChange={(e) => {
+                  handleChange('gender', e.target.value);
+                }}
+              >
+                <MenuItem value="Male">Male</MenuItem>
+                <MenuItem value="Female">Female</MenuItem>
+              </Select>
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <InputLabel id="email">Email</InputLabel>
+              <TextField
+                disabled={!editMode}
+                labelId="email"
+                fullWidth
+                placeholder="Email"
+                type="email"
+                value={user.email}
+                onChange={(e) => {
+                  handleChange('email', e.target.value);
+                }}
+              />
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <InputLabel id="phone">Phone</InputLabel>
+              <TextField
+                disabled={!editMode}
+                labelId="phone"
+                fullWidth
+                placeholder="Phone"
+                type="number"
+                value={user.phone}
+                onChange={(e) => {
+                  handleChange('phone', e.target.value);
+                }}
+              />
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <InputLabel id="whatsapp">Whatsapp No.</InputLabel>
+              <TextField
+                disabled={!editMode}
+                labelId="whatsapp"
+                fullWidth
+                placeholder="WhatsApp"
+                type="number"
+                value={user.whatsApp}
+                onChange={(e) => {
+                  handleChange('whatsApp', e.target.value);
+                }}
+              />
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <InputLabel id="dob">Date Of Birth</InputLabel>
+              <LocalizationProvider dateAdapter={AdapterDayjs}>
+                <DemoContainer components={['DatePicker']}>
+                  <DatePicker
+                    disabled={!editMode}
+                    labelId="dob"
+                    format="DD/MM/YYYY"
+                    label="Date Of Birth"
+                    disableFuture
+                    sx={{ width: '100%' }}
+                    value={user.dob === '' ? null : user.dob}
+                    onChange={(date) => {
+                      handleChange('dob', date);
+                    }}
+                  />
+                </DemoContainer>
+              </LocalizationProvider>
+            </Grid>
+          </Grid>
+        </Box>
+
+        {loggedUser && (loggedUser.role === 'HR' || loggedUser.department.pseudoAdmin) && (
           <Box>
+            <Typography gutterBottom variant="h5" color={theme.palette.grey[500]}>
+              Change Password
+            </Typography>
             <Grid container spacing={2} alignItems="stretch">
-              <Grid item xs={12}>
-                <AppCalender
-                  id={userId}
-                  setSnackbar={setSnackbar}
-                  refetchUser={refetch}
-                  setMonthYear={setMonthYear}
-                  month={monthYear.month}
-                  year={monthYear.year}
+              <Grid item xs={12} sm={6}>
+                <InputLabel id="password">New Password</InputLabel>
+                <TextField
+                  disabled={!editMode}
+                  labelId="password"
+                  fullWidth
+                  type="password"
+                  placeholder="New Password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                />
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <InputLabel id="confirmPassword">Confirm Password</InputLabel>
+                <TextField
+                  disabled={!editMode}
+                  labelId="confirmPassword"
+                  type="password"
+                  fullWidth
+                  placeholder="Confirm Password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
                 />
               </Grid>
             </Grid>
           </Box>
-          <Card
-            sx={{
-              padding: '30px',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '50px',
-              marginTop: '50px',
-            }}
-          >
-            <Box>
-              <Typography gutterBottom variant="h5" color={theme.palette.grey[500]}>
-                Personal Information
-              </Typography>
-              <Grid container spacing={2} alignItems="stretch">
-                <Grid item xs={12} sm={6}>
-                  <InputLabel id="employeeid">Employee ID</InputLabel>
-                  <TextField
-                    disabled={!editMode}
-                    labelId="employeeid"
-                    fullWidth
-                    placeholder="Employee ID"
-                    value={user.employeeId}
-                    onChange={(e) => {
-                      handleChange('employeeId', e.target.value);
-                    }}
-                  />
-                </Grid>
-                <Grid item xs={12} sm={6}>
-                  <InputLabel id="firstname">First Name</InputLabel>
-                  <TextField
-                    disabled={!editMode}
-                    labelId="firstname"
-                    fullWidth
-                    placeholder="First Name"
-                    value={user.firstName}
-                    onChange={(e) => {
-                      handleChange('firstName', e.target.value);
-                    }}
-                  />
-                </Grid>
-                <Grid item xs={12} sm={6}>
-                  <InputLabel id="lastname">Last Name</InputLabel>
-                  <TextField
-                    disabled={!editMode}
-                    labelId="lastname"
-                    fullWidth
-                    placeholder="Last Name"
-                    value={user.lastName}
-                    onChange={(e) => {
-                      handleChange('lastName', e.target.value);
-                    }}
-                  />
-                </Grid>
-                <Grid item xs={12} sm={6}>
-                  <InputLabel id="gender">Gender</InputLabel>
-                  <Select
-                    disabled={!editMode}
-                    labelId="gender"
-                    fullWidth
-                    label="Gender"
-                    value={user.gender}
-                    onChange={(e) => {
-                      handleChange('gender', e.target.value);
-                    }}
-                  >
-                    <MenuItem value="Male">Male</MenuItem>
-                    <MenuItem value="Female">Female</MenuItem>
-                  </Select>
-                </Grid>
-                <Grid item xs={12} sm={6}>
-                  <InputLabel id="email">Email</InputLabel>
-                  <TextField
-                    disabled={!editMode}
-                    labelId="email"
-                    fullWidth
-                    placeholder="Email"
-                    type="email"
-                    value={user.email}
-                    onChange={(e) => {
-                      handleChange('email', e.target.value);
-                    }}
-                  />
-                </Grid>
-                <Grid item xs={12} sm={6}>
-                  <InputLabel id="phone">Phone</InputLabel>
-                  <TextField
-                    disabled={!editMode}
-                    labelId="phone"
-                    fullWidth
-                    placeholder="Phone"
-                    type="number"
-                    value={user.phone}
-                    onChange={(e) => {
-                      handleChange('phone', e.target.value);
-                    }}
-                  />
-                </Grid>
-                <Grid item xs={12} sm={6}>
-                  <InputLabel id="whatsapp">Whatsapp No.</InputLabel>
-                  <TextField
-                    disabled={!editMode}
-                    labelId="whatsapp"
-                    fullWidth
-                    placeholder="WhatsApp"
-                    type="number"
-                    value={user.whatsApp}
-                    onChange={(e) => {
-                      handleChange('whatsApp', e.target.value);
-                    }}
-                  />
-                </Grid>
-                <Grid item xs={12} sm={6}>
-                  <InputLabel id="dob">Date Of Birth</InputLabel>
-                  <LocalizationProvider dateAdapter={AdapterDayjs}>
-                    <DemoContainer components={['DatePicker']}>
-                      <DatePicker
-                        disabled={!editMode}
-                        labelId="dob"
-                        format="DD/MM/YYYY"
-                        label="Date Of Birth"
-                        disableFuture
-                        sx={{ width: '100%' }}
-                        value={user.dob === '' ? null : user.dob}
-                        onChange={(date) => {
-                          handleChange('dob', date);
-                        }}
-                      />
-                    </DemoContainer>
-                  </LocalizationProvider>
-                </Grid>
-              </Grid>
-            </Box>
+        )}
 
-            {loggedUser && (loggedUser.role === 'HR' || loggedUser.department.pseudoAdmin) && (
-              <Box>
-                <Typography gutterBottom variant="h5" color={theme.palette.grey[500]}>
-                  Change Password
-                </Typography>
-                <Grid container spacing={2} alignItems="stretch">
-                  <Grid item xs={12} sm={6}>
-                    <InputLabel id="password">New Password</InputLabel>
-                    <TextField
-                      disabled={!editMode}
-                      labelId="password"
-                      fullWidth
-                      type="password"
-                      placeholder="New Password"
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                    />
-                  </Grid>
-                  <Grid item xs={12} sm={6}>
-                    <InputLabel id="confirmPassword">Confirm Password</InputLabel>
-                    <TextField
-                      disabled={!editMode}
-                      labelId="confirmPassword"
-                      type="password"
-                      fullWidth
-                      placeholder="Confirm Password"
-                      value={confirmPassword}
-                      onChange={(e) => setConfirmPassword(e.target.value)}
-                    />
-                  </Grid>
-                </Grid>
-              </Box>
-            )}
-
-            <Box>
-              <Typography gutterBottom variant="h5" color={theme.palette.grey[500]}>
-                Homeland Address
-              </Typography>
-              <Grid container spacing={2} alignItems="stretch">
-                <Grid item xs={8}>
-                  <InputLabel id="local">Enter Your Homeland Address</InputLabel>
-                  <TextField
-                    disabled={!editMode}
-                    labelId="local"
-                    fullWidth
-                    placeholder="Enter your homeland address"
-                    value={user.local}
-                    onChange={(e) => {
-                      handleChange('local', e.target.value);
-                    }}
-                  />
-                </Grid>
-                <Grid item xs={4}>
-                  <InputLabel id="pincode">Pin Code</InputLabel>
-                  <TextField
-                    disabled={!editMode}
-                    labelId="pincode"
-                    fullWidth
-                    placeholder="Pin code"
-                    type="number"
-                    value={user.pincode}
-                    onChange={(e) => {
-                      handleChange('pincode', e.target.value);
-                    }}
-                  />
-                </Grid>
-                <Grid item xs={12} sm={6}>
-                  <InputLabel id="city">City</InputLabel>
-                  <TextField
-                    disabled={!editMode}
-                    labelId="city"
-                    fullWidth
-                    placeholder="City"
-                    value={user.city}
-                    onChange={(e) => {
-                      handleChange('city', e.target.value);
-                    }}
-                  />
-                </Grid>
-                <Grid item xs={12} sm={6}>
-                  <InputLabel id="state">State</InputLabel>
-                  <TextField
-                    disabled={!editMode}
-                    labelId="state"
-                    fullWidth
-                    placeholder="State"
-                    value={user.state}
-                    onChange={(e) => {
-                      handleChange('state', e.target.value);
-                    }}
-                  />
-                </Grid>
-              </Grid>
-            </Box>
-
-            <Box>
-              <Typography gutterBottom variant="h5" color={theme.palette.grey[500]}>
-                Communication Address
-              </Typography>
-              <Grid container spacing={2} alignItems="stretch">
-                <Grid item xs={8}>
-                  <InputLabel id="commlocal">Enter Your Communication Address</InputLabel>
-                  <TextField
-                    disabled={!editMode}
-                    labelId="commlocal"
-                    fullWidth
-                    placeholder="Enter your communication address"
-                    value={user.commLocal}
-                    onChange={(e) => {
-                      handleChange('commLocal', e.target.value);
-                    }}
-                  />
-                </Grid>
-                <Grid item xs={4}>
-                  <InputLabel id="commpincode">Pin Code</InputLabel>
-                  <TextField
-                    disabled={!editMode}
-                    labelId="commpincode"
-                    fullWidth
-                    placeholder="Pin code"
-                    type="number"
-                    value={user.commPincode}
-                    onChange={(e) => {
-                      handleChange('commPincode', e.target.value);
-                    }}
-                  />
-                </Grid>
-                <Grid item xs={12} sm={6}>
-                  <InputLabel id="commCity">City</InputLabel>
-                  <TextField
-                    disabled={!editMode}
-                    labelId="commCity"
-                    fullWidth
-                    placeholder="City"
-                    value={user.commCity}
-                    onChange={(e) => {
-                      handleChange('commCity', e.target.value);
-                    }}
-                  />
-                </Grid>
-                <Grid item xs={12} sm={6}>
-                  <InputLabel id="commState">State</InputLabel>
-                  <TextField
-                    disabled={!editMode}
-                    labelId="commState"
-                    fullWidth
-                    placeholder="State"
-                    value={user.commState}
-                    onChange={(e) => {
-                      handleChange('commState', e.target.value);
-                    }}
-                  />
-                </Grid>
-              </Grid>
-            </Box>
-
-            <Box>
-              <Typography gutterBottom variant="h5" color={theme.palette.grey[500]}>
-                Legal Documents
-              </Typography>
-              <Stack
-                direction={{ xs: 'column', md: 'row' }}
-                gap={{ xs: '10px', md: '40px' }}
-                mt={{ xs: '50px', md: '30px' }}
-                alignItems="center"
-              >
-                <Avatar
-                  src={qatarDocs.url}
-                  alt={qatarDocs.doc ? qatarDocs.doc.name : 'Qatar Document'}
-                >
-                  Q
-                </Avatar>
-                <TextField
-                  disabled={!editMode}
-                  type="text"
-                  placeholder="Qatar ID Number"
-                  value={user.qatarId}
-                  onChange={(e) => handleChange('qatarId', e.target.value)}
-                />
-                <Button
-                  component="label"
-                  disabled={!editMode}
-                  variant="contained"
-                  tabIndex={-1}
-                  startIcon={<UploadIcon />}
-                >
-                  Upload Image
-                  <input type="file" onChange={uploadQatarImg} style={{ display: 'none' }} />
-                </Button>
-                <LocalizationProvider dateAdapter={AdapterDayjs}>
-                  <DemoContainer components={['DatePicker']} sx={{ padding: 0 }}>
-                    <DatePicker
-                      format="DD/MM/YYYY"
-                      disabled={!editMode}
-                      label="Expiry Date"
-                      disablePast
-                      sx={{ width: '100%' }}
-                      value={user.qatarExpiryDate === '' ? null : user.qatarExpiryDate}
-                      onChange={(date) => handleChange('qatarExpiryDate', date)}
-                    />
-                  </DemoContainer>
-                </LocalizationProvider>
-                <Button onClick={() => window.open(qatarDocs.url, '_blank')}>View</Button>
-              </Stack>
-              <Stack
-                direction={{ xs: 'column', md: 'row' }}
-                gap={{ xs: '10px', md: '40px' }}
-                mt={{ xs: '50px', md: '30px' }}
-                alignItems="center"
-              >
-                <Avatar
-                  src={passportDocs.url}
-                  alt={passportDocs.doc ? passportDocs.doc.name : 'Passport Document'}
-                >
-                  P
-                </Avatar>
-                <TextField
-                  disabled={!editMode}
-                  type="text"
-                  placeholder="Passport ID Number"
-                  value={user.passportId}
-                  onChange={(e) => handleChange('passportId', e.target.value)}
-                />
-                <Button
-                  component="label"
-                  disabled={!editMode}
-                  variant="contained"
-                  tabIndex={-1}
-                  startIcon={<UploadIcon />}
-                >
-                  Upload Image
-                  <input type="file" onChange={uploadPassportImg} style={{ display: 'none' }} />
-                </Button>
-                <LocalizationProvider dateAdapter={AdapterDayjs}>
-                  <DemoContainer components={['DatePicker']} sx={{ padding: 0 }}>
-                    <DatePicker
-                      disabled={!editMode}
-                      format="DD/MM/YYYY"
-                      label="Expiry Date"
-                      disablePast
-                      sx={{ width: '100%' }}
-                      value={user.passportExpiryDate === '' ? null : user.passportExpiryDate}
-                      onChange={(date) => handleChange('passportExpiryDate', date)}
-                    />
-                  </DemoContainer>
-                </LocalizationProvider>
-                <Button onClick={() => window.open(passportDocs.url, '_blank')}>View</Button>
-              </Stack>
-            </Box>
-
-            <Box>
-              <Typography gutterBottom variant="h5" color={theme.palette.grey[500]}>
-                Other Information
-              </Typography>
-              <Grid container spacing={2} alignItems="stretch">
-                <Grid item xs={12} sm={6}>
-                  <InputLabel id="role">Employee Role</InputLabel>
-                  <TextField
-                    disabled={!editMode}
-                    labelId="role"
-                    fullWidth
-                    placeholder="Employee Role"
-                    value={user.role}
-                    onChange={(e) => {
-                      handleChange('role', e.target.value);
-                    }}
-                  />
-                </Grid>
-                <Grid item xs={12} sm={6}>
-                  <InputLabel id="department">Department</InputLabel>
-                  <Select
-                    disabled={!editMode}
-                    labelId="department"
-                    fullWidth
-                    label="Department"
-                    value={user.departmentId}
-                    onChange={(e) => {
-                      const [id, name] = e.target.value.split('^');
-                      handleChange('departmentId', `${id}^${name}`);
-                    }}
-                  >
-                    {renderDept()}
-                  </Select>
-                </Grid>
-                {loggedUser &&
-                  (loggedUser.role === 'HR' ||
-                    !loggedUser.department.pseudoAdmin ||
-                    loggedUser._id === userId) && (
-                    <>
-                      <Grid item xs={12} sm={6}>
-                        <InputLabel id="salary">Base Salary (per month)</InputLabel>
-                        <TextField
-                          disabled={!editMode}
-                          labelId="salary"
-                          fullWidth
-                          placeholder="Base Salary (per month)"
-                          type="number"
-                          value={user.salary}
-                          onChange={(e) => {
-                            handleChange('salary', e.target.value);
-                          }}
-                        />
-                      </Grid>
-                      <Grid item xs={12} sm={6}>
-                        <InputLabel id="hike">Salary Hike (yearly in %)</InputLabel>
-                        <TextField
-                          disabled={!editMode}
-                          labelId="hike"
-                          fullWidth
-                          placeholder="Salary Hike (yearly in %)"
-                          type="number"
-                          value={user.hike}
-                          onChange={(e) => {
-                            handleChange('hike', e.target.value);
-                          }}
-                        />
-                      </Grid>
-                    </>
-                  )}
-              </Grid>
-            </Box>
-
-            {loggedUser && (loggedUser.role === 'HR' || loggedUser.department.pseudoAdmin) && (
-              <LoadingButton
+        <Box>
+          <Typography gutterBottom variant="h5" color={theme.palette.grey[500]}>
+            Homeland Address
+          </Typography>
+          <Grid container spacing={2} alignItems="stretch">
+            <Grid item xs={8}>
+              <InputLabel id="local">Enter Your Homeland Address</InputLabel>
+              <TextField
                 disabled={!editMode}
-                loading={isLoading}
-                loadingIndicator={<CircularProgress />}
-                variant="contained"
-                sx={{ alignSelf: 'flex-start' }}
-                onClick={saveUser}
+                labelId="local"
+                fullWidth
+                placeholder="Enter your homeland address"
+                value={user.local}
+                onChange={(e) => {
+                  handleChange('local', e.target.value);
+                }}
+              />
+            </Grid>
+            <Grid item xs={4}>
+              <InputLabel id="pincode">Pin Code</InputLabel>
+              <TextField
+                disabled={!editMode}
+                labelId="pincode"
+                fullWidth
+                placeholder="Pin code"
+                type="number"
+                value={user.pincode}
+                onChange={(e) => {
+                  handleChange('pincode', e.target.value);
+                }}
+              />
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <InputLabel id="city">City</InputLabel>
+              <TextField
+                disabled={!editMode}
+                labelId="city"
+                fullWidth
+                placeholder="City"
+                value={user.city}
+                onChange={(e) => {
+                  handleChange('city', e.target.value);
+                }}
+              />
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <InputLabel id="state">State</InputLabel>
+              <TextField
+                disabled={!editMode}
+                labelId="state"
+                fullWidth
+                placeholder="State"
+                value={user.state}
+                onChange={(e) => {
+                  handleChange('state', e.target.value);
+                }}
+              />
+            </Grid>
+          </Grid>
+        </Box>
+
+        <Box>
+          <Typography gutterBottom variant="h5" color={theme.palette.grey[500]}>
+            Communication Address
+          </Typography>
+          <Grid container spacing={2} alignItems="stretch">
+            <Grid item xs={8}>
+              <InputLabel id="commlocal">Enter Your Communication Address</InputLabel>
+              <TextField
+                disabled={!editMode}
+                labelId="commlocal"
+                fullWidth
+                placeholder="Enter your communication address"
+                value={user.commLocal}
+                onChange={(e) => {
+                  handleChange('commLocal', e.target.value);
+                }}
+              />
+            </Grid>
+            <Grid item xs={4}>
+              <InputLabel id="commpincode">Pin Code</InputLabel>
+              <TextField
+                disabled={!editMode}
+                labelId="commpincode"
+                fullWidth
+                placeholder="Pin code"
+                type="number"
+                value={user.commPincode}
+                onChange={(e) => {
+                  handleChange('commPincode', e.target.value);
+                }}
+              />
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <InputLabel id="commCity">City</InputLabel>
+              <TextField
+                disabled={!editMode}
+                labelId="commCity"
+                fullWidth
+                placeholder="City"
+                value={user.commCity}
+                onChange={(e) => {
+                  handleChange('commCity', e.target.value);
+                }}
+              />
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <InputLabel id="commState">State</InputLabel>
+              <TextField
+                disabled={!editMode}
+                labelId="commState"
+                fullWidth
+                placeholder="State"
+                value={user.commState}
+                onChange={(e) => {
+                  handleChange('commState', e.target.value);
+                }}
+              />
+            </Grid>
+          </Grid>
+        </Box>
+
+        <Box>
+          <Typography gutterBottom variant="h5" color={theme.palette.grey[500]}>
+            Legal Documents
+          </Typography>
+          <Stack
+            direction={{ xs: 'column', md: 'row' }}
+            gap={{ xs: '10px', md: '40px' }}
+            mt={{ xs: '50px', md: '30px' }}
+            alignItems="center"
+          >
+            <Avatar src={qatarDocs.url} alt={qatarDocs.doc ? qatarDocs.doc.name : 'Qatar Document'}>
+              Q
+            </Avatar>
+            <TextField
+              disabled={!editMode}
+              type="text"
+              placeholder="Qatar ID Number"
+              value={user.qatarId}
+              onChange={(e) => handleChange('qatarId', e.target.value)}
+            />
+            <Button
+              component="label"
+              disabled={!editMode}
+              variant="contained"
+              tabIndex={-1}
+              startIcon={<UploadIcon />}
+            >
+              Upload Image
+              <input type="file" onChange={uploadQatarImg} style={{ display: 'none' }} />
+            </Button>
+            <LocalizationProvider dateAdapter={AdapterDayjs}>
+              <DemoContainer components={['DatePicker']} sx={{ padding: 0 }}>
+                <DatePicker
+                  format="DD/MM/YYYY"
+                  disabled={!editMode}
+                  label="Expiry Date"
+                  disablePast
+                  sx={{ width: '100%' }}
+                  value={user.qatarExpiryDate === '' ? null : user.qatarExpiryDate}
+                  onChange={(date) => handleChange('qatarExpiryDate', date)}
+                />
+              </DemoContainer>
+            </LocalizationProvider>
+            <Button onClick={() => window.open(qatarDocs.url, '_blank')}>View</Button>
+          </Stack>
+          <Stack
+            direction={{ xs: 'column', md: 'row' }}
+            gap={{ xs: '10px', md: '40px' }}
+            mt={{ xs: '50px', md: '30px' }}
+            alignItems="center"
+          >
+            <Avatar
+              src={passportDocs.url}
+              alt={passportDocs.doc ? passportDocs.doc.name : 'Passport Document'}
+            >
+              P
+            </Avatar>
+            <TextField
+              disabled={!editMode}
+              type="text"
+              placeholder="Passport ID Number"
+              value={user.passportId}
+              onChange={(e) => handleChange('passportId', e.target.value)}
+            />
+            <Button
+              component="label"
+              disabled={!editMode}
+              variant="contained"
+              tabIndex={-1}
+              startIcon={<UploadIcon />}
+            >
+              Upload Image
+              <input type="file" onChange={uploadPassportImg} style={{ display: 'none' }} />
+            </Button>
+            <LocalizationProvider dateAdapter={AdapterDayjs}>
+              <DemoContainer components={['DatePicker']} sx={{ padding: 0 }}>
+                <DatePicker
+                  disabled={!editMode}
+                  format="DD/MM/YYYY"
+                  label="Expiry Date"
+                  disablePast
+                  sx={{ width: '100%' }}
+                  value={user.passportExpiryDate === '' ? null : user.passportExpiryDate}
+                  onChange={(date) => handleChange('passportExpiryDate', date)}
+                />
+              </DemoContainer>
+            </LocalizationProvider>
+            <Button onClick={() => window.open(passportDocs.url, '_blank')}>View</Button>
+          </Stack>
+        </Box>
+
+        <Box>
+          <Typography gutterBottom variant="h5" color={theme.palette.grey[500]}>
+            Other Information
+          </Typography>
+          <Grid container spacing={2} alignItems="stretch">
+            <Grid item xs={12} sm={6}>
+              <InputLabel id="role">Employee Role</InputLabel>
+              <TextField
+                disabled={!editMode}
+                labelId="role"
+                fullWidth
+                placeholder="Employee Role"
+                value={user.role}
+                onChange={(e) => {
+                  handleChange('role', e.target.value);
+                }}
+              />
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <InputLabel id="department">Department</InputLabel>
+              <Select
+                disabled={!editMode}
+                labelId="department"
+                fullWidth
+                label="Department"
+                value={user.departmentId}
+                onChange={(e) => {
+                  const [id, name] = e.target.value.split('^');
+                  handleChange('departmentId', `${id}^${name}`);
+                }}
               >
-                Update
-              </LoadingButton>
-            )}
-          </Card>
-        </Container>
-      )}
-    </>
+                {renderDept()}
+              </Select>
+            </Grid>
+            {loggedUser &&
+              (loggedUser.role === 'HR' ||
+                !loggedUser.department.pseudoAdmin ||
+                loggedUser._id === userId) && (
+                <>
+                  <Grid item xs={12} sm={6}>
+                    <InputLabel id="salary">Base Salary (per month)</InputLabel>
+                    <TextField
+                      disabled={!editMode}
+                      labelId="salary"
+                      fullWidth
+                      placeholder="Base Salary (per month)"
+                      type="number"
+                      value={user.salary}
+                      onChange={(e) => {
+                        handleChange('salary', e.target.value);
+                      }}
+                    />
+                  </Grid>
+                  <Grid item xs={12} sm={6}>
+                    <InputLabel id="hike">Salary Hike (yearly in %)</InputLabel>
+                    <TextField
+                      disabled={!editMode}
+                      labelId="hike"
+                      fullWidth
+                      placeholder="Salary Hike (yearly in %)"
+                      type="number"
+                      value={user.hike}
+                      onChange={(e) => {
+                        handleChange('hike', e.target.value);
+                      }}
+                    />
+                  </Grid>
+                </>
+              )}
+          </Grid>
+        </Box>
+
+        {loggedUser && (loggedUser.role === 'HR' || loggedUser.department.pseudoAdmin) && (
+          <LoadingButton
+            disabled={!editMode}
+            loading={isLoading}
+            loadingIndicator={<CircularProgress />}
+            variant="contained"
+            sx={{ alignSelf: 'flex-start' }}
+            onClick={saveUser}
+          >
+            Update
+          </LoadingButton>
+        )}
+      </Card>
+    </Container>
   );
 }

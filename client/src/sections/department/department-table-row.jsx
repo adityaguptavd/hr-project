@@ -15,6 +15,7 @@ export default function DepartmentTableRow({
   description,
   open: openTime,
   close: closeTime,
+  workingDays,
   pseudoAdmin,
   handleClick,
 }) {
@@ -36,6 +37,8 @@ export default function DepartmentTableRow({
 
         <TableCell>{fTime(closeTime)}</TableCell>
 
+        <TableCell>{workingDays}</TableCell>
+
         <TableCell>{pseudoAdmin}</TableCell>
       </TableRow>
   );
@@ -47,6 +50,7 @@ DepartmentTableRow.propTypes = {
   description: PropTypes.string,
   open: PropTypes.any,
   close: PropTypes.any,
+  workingDays: PropTypes.any,
   pseudoAdmin: PropTypes.bool,
   selected: PropTypes.any,
 };

@@ -50,14 +50,6 @@ const employeeSchema = new mongoose.Schema({
     expiryDate: Date,
   },
 
-  documents: [
-    {
-      documentType: String,
-      file: String,
-      expiryDate: Date,
-    },
-  ],
-
   salary: {
     base: Number,
     deductions: {

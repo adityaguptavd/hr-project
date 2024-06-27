@@ -34,7 +34,7 @@ export default function UserPage() {
   const theme = useTheme();
 
   const token = useSelector((state) => state.user.token);
-  const userRole = useSelector((state) => state.user.user.role);
+  const user = useSelector((state) => state.user.user);
 
   const { data, refetch } = useFetchAllEmployeesQuery({ token });
   const [removeEmployeeMutation] = useRemoveEmployeeMutation();
@@ -119,7 +119,7 @@ export default function UserPage() {
 
   const removeEmployee = (id) => {
     removeEmployeeMutation({ token, id }).then(() => {
-      const updatedUsersList = users.filter((user) => user._id !== id);
+      const updatedUsersList = users.filter((u) => u._id !== id);
       setUsers(updatedUsersList);
     });
     setSelected([]);
@@ -152,7 +152,7 @@ export default function UserPage() {
       <Stack direction="row" alignItems="center" justifyContent="space-between" mb={5}>
         <Typography variant="h4">Users</Typography>
 
-        {userRole === 'HR' && (
+        {user && user.role === 'HR' && (
           <Button
             variant="contained"
             color="inherit"

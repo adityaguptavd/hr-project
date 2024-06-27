@@ -28,7 +28,7 @@ export default function UserTableToolbar({
   const muiTheme = useTheme();
 
   const token = useSelector((state) => state.user.token);
-  const userRole = useSelector((state) => state.user.user.role);
+  const user = useSelector((state) => state.user.user);
   const [uploadAttendanceMutation, { isLoading, data, error }] = useUploadAttendanceMutation();
   // const [fileData, setFileData] = useState([]);
   const attendanceInputRef = useRef();
@@ -121,10 +121,10 @@ export default function UserTableToolbar({
               </InputAdornment>
             }
           />
-          {userRole === "HR" && uploadAttendanceField}
+          {user && user.role === "HR" && uploadAttendanceField}
         </>
       )}
-      {userRole === 'HR' && numSelected === 1 && (
+      {user && user.role === 'HR' && numSelected === 1 && (
         <Tooltip title="Delete">
           <IconButton onClick={removeEmployee}>
             <Iconify icon="eva:trash-2-fill" />

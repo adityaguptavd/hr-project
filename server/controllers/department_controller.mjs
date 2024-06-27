@@ -14,6 +14,7 @@ export const createDepartment = [
     .exists()
     .isString()
     .withMessage("Invalid Department Description"),
+  body("workingDays").exists().isNumeric().isIn([300, 365]).withMessage("Value out of options 300 and 365"),
   validateErrors,
   fetchCredentials,
   async (req, res) => {
@@ -24,7 +25,7 @@ export const createDepartment = [
         return res.status(403).json({ error: "Access Denied" });
       }
       // Extract the details from body
-      const { name, description, openTime, closeTime, pseudoAdmin } = req.body;
+      const { name, description, openTime, closeTime, pseudoAdmin, workingDays } = req.body;
       // Check if any department exists with the same name
       const existingDepartment = await Department.findOne({ name });
       if (existingDepartment) {
@@ -42,6 +43,7 @@ export const createDepartment = [
         open,
         close,
         pseudoAdmin,
+        workingDays,
       });
       await newDepartment.save();
       return res.status(201).json({ id: newDepartment._id });
@@ -73,13 +75,6 @@ export const fetchAllDepartments = [
 ];
 
 export const updateDepartment = [
-  // validation rules
-  body("name").exists().isString().withMessage("Invalid Department Name"),
-  body("description")
-    .exists()
-    .isString()
-    .withMessage("Invalid Department Description"),
-  validateErrors,
   fetchCredentials,
   async (req, res) => {
     try {
@@ -90,7 +85,7 @@ export const updateDepartment = [
         return res.status(403).json({ error: "Access Denied" });
       }
       // extract the details from body
-      const { name, description, openTime, closeTime, pseudoAdmin } = req.body;
+      const { name, description, openTime, closeTime, pseudoAdmin, workingDays } = req.body;
       // check if any department exists with same name
       const existingDepartment = await Department.findById(deptId);
       if (!existingDepartment) {
@@ -113,6 +108,7 @@ export const updateDepartment = [
       if(pseudoAdmin !== undefined){
         existingDepartment.pseudoAdmin = pseudoAdmin;
       }
+      existingDepartment.workingDays = workingDays;
       await existingDepartment.save();
       return res.status(201).json({ message: "Department Updated" });
     } catch (error) {

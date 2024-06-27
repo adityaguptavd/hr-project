@@ -12,7 +12,7 @@ import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { TimePicker } from '@mui/x-date-pickers/TimePicker';
 import { useCreateDepartmentMutation, useUpdateDepartmentMutation } from 'src/state/api/department';
 import { LoadingButton } from '@mui/lab';
-import { CircularProgress, useTheme } from '@mui/material';
+import { CircularProgress, useTheme, MenuItem, Select } from '@mui/material';
 import dayjs from 'dayjs';
 import { useSelector } from 'react-redux';
 import Checkbox from '@mui/material/Checkbox';
@@ -30,6 +30,7 @@ const NewDepartmentForm = ({ refetch, handleCloseMenu, edit, setEdit, setSnackba
     openTime: '',
     closeTime: '',
     pseudoAdmin: false,
+    workingDays: 365,
   });
 
   const handleChange = (field, value) => {
@@ -40,7 +41,7 @@ const NewDepartmentForm = ({ refetch, handleCloseMenu, edit, setEdit, setSnackba
   };
 
   const createDepartment = () => {
-    const { name, description, openTime, closeTime, pseudoAdmin } = department;
+    const { name, description, openTime, closeTime, pseudoAdmin, workingDays } = department;
     if (name === '' || description === '' || openTime === '' || closeTime === '') {
       setSnackbar({
         open: true,
@@ -56,6 +57,7 @@ const NewDepartmentForm = ({ refetch, handleCloseMenu, edit, setEdit, setSnackba
       openTime: dayjs(openTime).format(),
       closeTime: dayjs(closeTime).format(),
       pseudoAdmin,
+      workingDays,
     });
     if (edit) {
       updateDepartmentMutation({ token, body, id: edit._id });
@@ -132,7 +134,7 @@ const NewDepartmentForm = ({ refetch, handleCloseMenu, edit, setEdit, setSnackba
   return (
     <Grid container spacing={2}>
       <Grid item xs={12}>
-        <Typography variant="h4">{edit ? "Update Department" : "New Department"}</Typography>
+        <Typography variant="h4">{edit ? 'Update Department' : 'New Department'}</Typography>
       </Grid>
       <Grid item xs={12}>
         <TextField
@@ -153,6 +155,19 @@ const NewDepartmentForm = ({ refetch, handleCloseMenu, edit, setEdit, setSnackba
             handleChange('description', e.target.value);
           }}
         />
+      </Grid>
+      <Grid item xs={12}>
+        <Select
+          fullWidth
+          label="Working Days"
+          value={department.workingDays}
+          onChange={(e) => {
+            handleChange('workingDays', e.target.value);
+          }}
+        >
+          <MenuItem value={365}>365 days</MenuItem>
+          <MenuItem value={300}>300 days</MenuItem>
+        </Select>
       </Grid>
       <Grid item xs={8}>
         <LocalizationProvider dateAdapter={AdapterDayjs}>
@@ -179,8 +194,10 @@ const NewDepartmentForm = ({ refetch, handleCloseMenu, edit, setEdit, setSnackba
         </LocalizationProvider>
       </Grid>
       <Grid item xs={8} onClick={() => handleChange('pseudoAdmin', !department.pseudoAdmin)}>
-      <Checkbox disableRipple checked={department.pseudoAdmin} />
-      <Typography variant="body-2" sx={{cursor: "pointer"}}>Pseudo Admin</Typography>
+        <Checkbox disableRipple checked={department.pseudoAdmin} />
+        <Typography variant="body-2" sx={{ cursor: 'pointer' }}>
+          Pseudo Admin
+        </Typography>
       </Grid>
       <Grid item xs={12} container justifyContent="flex-start" spacing={2}>
         <Grid item xs={{ xs: 12, sm: 3 }}>

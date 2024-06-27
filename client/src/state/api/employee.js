@@ -24,8 +24,23 @@ export const fetchEmployeeByIdApi = createApi({
     tagTypes: ["fetchEmployee"],
     endpoints: (build) => ({
         fetchEmployee: build.query({
+            query: ({id, token}) => ({
+                url: `/employees/fetchEmployeeById/${id}`,
+                method: 'GET',
+                headers: {'content-type': 'application/json', token},
+            }),
+        }),
+    })
+});
+
+export const fetchEmployeeSummaryByIdApi = createApi({
+    baseQuery: fetchBaseQuery({baseUrl: apiUrl}),
+    reducerPath: "fetchEmployeeSummaryByIdApi",
+    tagTypes: ["fetchEmployee"],
+    endpoints: (build) => ({
+        fetchEmployeeSummary: build.query({
             query: ({id, token, month, year}) => ({
-                url: `/employees/fetchEmployeeById/${id}/${month}/${year}`,
+                url: `/employees/fetchEmployeeSummaryById/${id}/${month}/${year}`,
                 method: 'GET',
                 headers: {'content-type': 'application/json', token},
             }),
@@ -84,3 +99,4 @@ export const { useUpdateEmployeeMutation } = updateEmployeeApi;
 export const { useFetchEmployeeQuery } = fetchEmployeeByIdApi;
 export const { useFetchAllEmployeesQuery } = fetchAllEmployeesApi;
 export const { useRemoveEmployeeMutation } = removeEmployeeApi;
+export const { useFetchEmployeeSummaryQuery } = fetchEmployeeSummaryByIdApi;

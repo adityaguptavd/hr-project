@@ -7,12 +7,13 @@ export const updateAttendance = async (
   fromDate,
   toDate,
   employee,
-  leaveType
+  leaveType,
+  extended,
 ) => {
   try {
     const dateArray = [];
-    const currentDate = moment(fromDate, DATE_FORMAT);
-    const lastDate = moment(toDate, DATE_FORMAT);
+    const currentDate = fromDate.clone();
+    const lastDate = toDate.clone();
 
     while (currentDate <= lastDate) {
       dateArray.push(currentDate.toDate());
@@ -69,9 +70,9 @@ export const updateAttendance = async (
         employee.salary.deductions =
           employee.salary.deductions - attendanceOnDate.deducted;
         // update salary according to new status
-        if (paidStatus.includes(status) && paidStatus.includes(prevStatus)) {
+        if (paidStatus.includes(status) && paidStatus.includes(prevStatus) && !extended) {
           attendanceOnDate.status = status;
-        } else if (paidStatus.includes(status)) {
+        } else if (paidStatus.includes(status) && !extended) {
           attendanceOnDate.status = status;
           attendanceOnDate.daySalary = attendanceOnDate.perDaySalary;
           attendanceOnDate.deducted = 0;

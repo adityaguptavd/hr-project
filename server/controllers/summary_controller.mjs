@@ -4,6 +4,7 @@ import Department from "../db/models/Department.mjs";
 import LeaveApplication from "../db/models/LeaveApplication.mjs";
 import fetchCredentials from "../middleware/fetchCredentials.mjs";
 import Attendance from "../db/models/Attendance.mjs";
+import moment from 'moment';
 
 // Fetch the total number of expiring documents within 3 days
 async function fetchTotalExpiringDocuments() {
@@ -95,16 +96,15 @@ async function getAbsentLeaveCountByDepartmentThisYearMonthWise() {
   ];
   try {
 
-    const today = new Date();
-    const thisYear = today.getFullYear();
+    const today = moment(new Date());
 
     const results = await Attendance.aggregate([
       {
         $match: {
-          status: { $in: ["Absent"] },
+          status: "Absent",
           date: {
-            $gte: new Date(thisYear, 0, 1), // Start of this year
-            $lt: today, // End of today
+            $gte: today.startOf("year").toDate(), // Start of this year
+            $lte: today.endOf("year").toDate(), // End of today
           },
         },
       },
@@ -196,13 +196,13 @@ async function fetchLeavesByType() {
       { _id: "Others", totalLeaves: 0 },
     ];
 
-    const currentMonth = new Date().getMonth() + 1; // Get the current month (1-12)
+    const currentMonth = moment(new Date()); // Get the current month (1-12)
     const pipeline = [
       {
         $match: {
           fromDate: {
-            $gte: new Date(new Date().getFullYear(), currentMonth - 1, 1), // Start of current month
-            $lt: new Date(new Date().getFullYear(), currentMonth, 1), // Start of next month
+            $gte: currentMonth.startOf("month").toDate(), // Start of current month
+            $lte: currentMonth.endOf("month").toDate(), // Start of next month
           },
           status: "Approved",
         },

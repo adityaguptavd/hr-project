@@ -158,11 +158,11 @@ export default function DepartmentPage() {
   }, [data]);
 
   useEffect(() => {
-    if(removed){
+    if (removed) {
       setSelected([]);
       refetch();
     }
-    if(removeError){
+    if (removeError) {
       let mssg = '';
       if (removeError.status === 'FETCH_ERROR') {
         mssg = 'Server is not responding!';
@@ -210,7 +210,7 @@ export default function DepartmentPage() {
         anchorOrigin={{ vertical: 'top', horizontal: 'left' }}
         transformOrigin={{ vertical: 'top', horizontal: 'right' }}
         PaperProps={{
-          sx: { width: '450px', height: '490px', padding: '20px' },
+          sx: { width: '450px', height: '570px', padding: '20px' },
         }}
       >
         <NewDepartmentForm
@@ -246,6 +246,7 @@ export default function DepartmentPage() {
                   { id: 'description', label: 'Description' },
                   { id: 'open', label: 'Open Time' },
                   { id: 'close', label: 'Close Time' },
+                  { id: 'workingDays', label: 'Working Days' },
                   { id: 'pseudoAdmin', label: 'Pseudo Admin' },
                 ]}
               />
@@ -259,7 +260,8 @@ export default function DepartmentPage() {
                       description={row.description}
                       open={row.open}
                       close={row.close}
-                      pseudoAdmin={row.pseudoAdmin ? "Yes" : "No"}
+                      workingDays={row.workingDays}
+                      pseudoAdmin={row.pseudoAdmin ? 'Yes' : 'No'}
                       selected={selected.indexOf(row._id) !== -1}
                       handleClick={(event) => handleClick(event, row._id)}
                     />
