@@ -165,7 +165,7 @@ export const uploadAttendance = [
 
                       // time when employee exits
                       let exitTime = employee.department.close;
-                      if ((i + 1) < timeOfEntryOrExit.length) {
+                      if (i + 1 < timeOfEntryOrExit.length) {
                         const [exitHour, exitMin, exitSec] =
                           timeOfEntryOrExit[i + 1].split(":");
                         exitTime = new Date();
@@ -197,6 +197,8 @@ export const uploadAttendance = [
                   }
                   employee.salary.lastUpdated = Date.now();
 
+                  let attendances = [];
+
                   const attendance = new Attendance({
                     employee: employee._id,
                     date,
@@ -206,7 +208,52 @@ export const uploadAttendance = [
                     perDaySalary: oneDaySalary,
                     entryExitTime,
                   });
-                  await attendance.save();
+
+                  attendances.push(attendance);
+
+                  // Check for Thursday or Sunday and adjust attendance for Friday and Saturday
+                  const dayOfWeek = date.day();
+                  const targetStatus = [
+                    "Absent",
+                    "Medical Leave",
+                    "Casual Leave",
+                  ];
+                  if (targetStatus.includes(status)) {
+                    let targetDates = [];
+                    if (dayOfWeek === 4) {
+                      // If Thursday, mark next Friday and Saturday
+                      targetDates = [
+                        moment(date).clone().add(1, "days").startOf("day"),
+                        moment(date).clone().add(2, "days").startOf("day"),
+                      ];
+                    } else if (dayOfWeek === 0) {
+                      // If Sunday, mark previous Friday and Saturday
+                      targetDates = [
+                        moment(date).clone().subtract(2, "days").startOf("day"),
+                        moment(date).clone().subtract(1, "days").startOf("day"),
+                      ];
+                    }
+                    for (let targetDate of targetDates) {
+                      targetDate = targetDate.toDate();
+                      let targetAttendance = await Attendance.findOne({
+                        employee: employee._id,
+                        date: targetDate,
+                      });
+                      if (!targetAttendance) {
+                        targetAttendance = new Attendance({
+                          employee: employee._id,
+                          status,
+                          date: targetDate,
+                          entryExitTime: [],
+                          daySalary: 0,
+                          perDaySalary: oneDaySalary,
+                          deducted: oneDaySalary,
+                        });
+                        attendances.push(targetAttendance);
+                      }
+                    }
+                  }
+                  await Attendance.insertMany(attendances);
                   // Save the updated employee document
                   await employee.save();
                 }
@@ -413,6 +460,7 @@ export const addAttendance = [
       if (!employee) {
         return res.status(404).json({ error: "Employee not found!" });
       }
+      let attendances = [];
       let attendance = await Attendance.findOne({
         employee: employee._id,
         date,
@@ -451,9 +499,72 @@ export const addAttendance = [
         attendance.daySalary = 0;
         attendance.deducted = attendance.perDaySalary;
       }
+
+      attendances.push(attendance);
+
+      // Check for Thursday or Sunday and adjust attendance for Friday and Saturday
+      const dayOfWeek = moment(req.body.date).day();
+      const targetStatus = ["Absent", "Medical Leave", "Casual Leave"];
+      if (targetStatus.includes(status)) {
+        if (dayOfWeek === 4) {
+          // If Thursday, mark next Friday and Saturday
+          const nextFriday = moment(req.body.date).clone().add(1, "days").startOf("day");
+          const nextSaturday = moment(req.body.date)
+            .clone()
+            .add(2, "days")
+            .startOf("day");
+          for (let targetDate of [nextFriday, nextSaturday]) {
+            targetDate = targetDate.toDate();
+            let targetAttendance = await Attendance.findOne({
+              employee: employee._id,
+              date: targetDate,
+            });
+            if (!targetAttendance) {
+              targetAttendance = new Attendance({
+                employee: employee._id,
+                status,
+                date: targetDate,
+                entryExitTime: [],
+                daySalary: 0,
+                perDaySalary: employee.salary.base / daysInMonth,
+                deducted: employee.salary.base / daysInMonth,
+              });
+              attendances.push(targetAttendance);
+            }
+          }
+        } else if (dayOfWeek === 0) {
+          // If Sunday, mark previous Friday and Saturday
+          const prevFriday = moment(req.body.date).clone()
+            .subtract(2, "days")
+            .startOf("day");
+          const prevSaturday = moment(req.body.date).clone()
+            .subtract(1, "days")
+            .startOf("day");
+          for (let targetDate of [prevFriday, prevSaturday]) {
+            targetDate = targetDate.toDate();
+            let targetAttendance = await Attendance.findOne({
+              employee: employee._id,
+              date: targetDate,
+            });
+            if (!targetAttendance) {
+              targetAttendance = new Attendance({
+                employee: employee._id,
+                status,
+                date: targetDate,
+                entryExitTime: [],
+                daySalary: 0,
+                perDaySalary: employee.salary.base / daysInMonth,
+                deducted: employee.salary.base / daysInMonth,
+              });
+              attendances.push(attendance);
+            }
+          }
+        }
+      }
+
       employee.salary.lastUpdated = Date.now();
       await employee.save();
-      await attendance.save();
+      await Attendance.insertMany(attendances);
       return res.status(201).json({ message: "Attendance Added" });
     } catch (error) {
       console.error(error);

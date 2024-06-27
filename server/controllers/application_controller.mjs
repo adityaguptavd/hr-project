@@ -110,14 +110,12 @@ export const uploadApplication = [
       let extended = false;
       // Extend if startDate is Sunday (day 0)
       if (leaveStartDate.day() === 0) {
-        console.log('sunday');
         extended = true;
         leaveStartDate.subtract(2, "days"); // Subtract 2 days to include Friday
       }
 
       // Extend if endDate is Thursday (day 4)
       if (leaveEndDate.day() === 4) {
-        console.log('thursday');
         extended = true;
         leaveEndDate.add(1, "days"); // Add Friday
         leaveEndDate.add(1, "days"); // Add Saturday
@@ -138,8 +136,8 @@ export const uploadApplication = [
       const application = new LeaveApplication({
         employee: employee._id,
         leaveType,
-        fromDate: leaveStartDate.toDate(),
-        toDate: leaveEndDate.toDate(),
+        fromDate: moment(fromDate, DATE_FORMAT).toDate(),
+        toDate: moment(toDate, DATE_FORMAT).toDate(),
         reason,
         document: req.file
           ? Buffer.from(req.file.buffer).toString("base64")

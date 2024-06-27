@@ -46,8 +46,8 @@ export const updateAttendance = async (
       });
       if (!attendanceOnDate) {
         const perDaySalary = employee.salary.base / moment(date).daysInMonth();
-        const daySalary = leaveType === "Medical Leave" ? perDaySalary : 0;
-        const deducted = leaveType === "Medical Leave" ? 0 : perDaySalary;
+        const daySalary = leaveType === "Medical Leave" && !extended ? perDaySalary : 0;
+        const deducted = leaveType === "Medical Leave" && !extended ? 0 : perDaySalary;
         employee.salary.finalAmount = employee.salary.finalAmount - deducted;
         employee.salary.deductions = employee.salary.deductions + deducted;
         attendances.push({
