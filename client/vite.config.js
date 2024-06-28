@@ -6,6 +6,9 @@ import checker from 'vite-plugin-checker';
 // ----------------------------------------------------------------------
 
 export default defineConfig({
+  build: {
+    chunkSizeWarningLimit: 1600,
+  },
   plugins: [
     react(),
     checker({
