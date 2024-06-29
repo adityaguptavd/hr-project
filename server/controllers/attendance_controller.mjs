@@ -212,7 +212,7 @@ export const uploadAttendance = [
                   attendances.push(attendance);
 
                   // Check for Thursday or Sunday and adjust attendance for Friday and Saturday
-                  const dayOfWeek = date.day();
+                  const dayOfWeek = moment(row["Date"], "YYYY-MM-DD").day();
                   const targetStatus = [
                     "Absent",
                     "Medical Leave",
@@ -508,7 +508,10 @@ export const addAttendance = [
       if (targetStatus.includes(status)) {
         if (dayOfWeek === 4) {
           // If Thursday, mark next Friday and Saturday
-          const nextFriday = moment(req.body.date).clone().add(1, "days").startOf("day");
+          const nextFriday = moment(req.body.date)
+            .clone()
+            .add(1, "days")
+            .startOf("day");
           const nextSaturday = moment(req.body.date)
             .clone()
             .add(2, "days")
@@ -534,10 +537,12 @@ export const addAttendance = [
           }
         } else if (dayOfWeek === 0) {
           // If Sunday, mark previous Friday and Saturday
-          const prevFriday = moment(req.body.date).clone()
+          const prevFriday = moment(req.body.date)
+            .clone()
             .subtract(2, "days")
             .startOf("day");
-          const prevSaturday = moment(req.body.date).clone()
+          const prevSaturday = moment(req.body.date)
+            .clone()
             .subtract(1, "days")
             .startOf("day");
           for (let targetDate of [prevFriday, prevSaturday]) {
