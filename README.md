@@ -67,7 +67,7 @@ npm run dev
 
 Now, open your browser and navigate to http://localhost:3030
 
-## Contributing to Exploding Kitten Game
+## Contributing to Employee Management System
 To contribute to EMS, follow these steps:
 
 1. Fork this repository.
